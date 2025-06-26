@@ -13,11 +13,14 @@ return new class extends Migration
     {
         Schema::create('customers', function (Blueprint $table) {
             $table->id('cid');
-            $table->string('name');
+            $table->string('full_name')->nullable();
             $table->string('email')->unique();
+            $table->string('password');
             $table->string('phone')->nullable();
-            $table->string('image')->nullable(); // e.g., customers/12345.png
+            $table->string('photo')->nullable();
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
+            $table->string('otp')->nullable();
+            $table->boolean('otp_verified')->default(false);
             $table->date('date_of_birth')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
