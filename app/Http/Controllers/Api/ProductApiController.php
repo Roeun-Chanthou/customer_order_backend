@@ -13,90 +13,9 @@ use Exception;
 
 class ProductApiController extends Controller
 {
-    // public function index()
-    // {
-    //     $products = Product::orderBy('pid', 'asc')->get()->map(function ($product) {
-    //         return $this->formatProductResponse($product);
-    //     });
-
-    //     return response()->json($products, 200);
-    // }
-
-    //     public function index(Request $request)
-    // {
-    //     $query = Product::query();
-
-    //     if ($request->has('category_id') && $request->category_id !== 'all') {
-    //         $query->where('category_id', $request->category_id);
-    //     }
-
-    //     $products = $query->get()->map(function ($product) {
-    //         return $this->formatProductResponse($product);
-    //     });
-
-    //     return response()->json($products, 200);
-    // }
-
-    //     public function show(string $pid)
-    //     {
-    //         $product = Product::find($pid);
-    //         if (!$product) return response()->json(['message' => 'Product not found'], 404);
-    //         return response()->json($this->formatProductResponse($product), 200);
-    //     }
-
-    //     public function store(Request $request)
-    //     {
-    //         $validator = Validator::make($request->all(), [
-    //             'name' => 'required|string|max:255',
-    //             'description' => 'nullable|string',
-    //             'price' => 'required|numeric|min:0',
-    //             'stock' => 'required|integer|min:0',
-    //             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-    //         ]);
-    //         if ($validator->fails()) return response()->json(['errors' => $validator->errors()], 422);
-
-    //         $product = new Product($request->only(['name', 'description', 'price', 'stock']));
-    //         if ($request->hasFile('image')) {
-    //             $product->image = $this->storeImage($request->file('image'));
-    //         }
-    //         $product->save();
-
-    //         return response()->json([
-    //             'message' => 'Product created successfully',
-    //             'data' => $this->formatProductResponse($product)
-    //         ], 201);
-    //     }
-
-    //     public function update(Request $request, string $pid)
-    //     {
-    //         $product = Product::find($pid);
-    //         if (!$product) return response()->json(['message' => 'Product not found'], 404);
-
-    //         $validator = Validator::make($request->all(), [
-    //             'name' => 'sometimes|string|max:255',
-    //             'description' => 'sometimes|nullable|string',
-    //             'price' => 'sometimes|numeric|min:0',
-    //             'stock' => 'sometimes|integer|min:0',
-    //             'image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg|max:2048',
-    //         ]);
-    //         if ($validator->fails()) return response()->json(['errors' => $validator->errors()], 422);
-
-    //         $product->fill($request->only(['name', 'description', 'price', 'stock']));
-    //         if ($request->hasFile('image')) {
-    //             if ($product->image) Storage::delete(str_replace('/storage/', 'public/', $product->image));
-    //             $product->image = $this->storeImage($request->file('image'));
-    //         }
-    //         $product->save();
-
-    //         return response()->json([
-    //             'message' => 'Product updated successfully',
-    //             'data' => $this->formatProductResponse($product)
-    //         ], 200);
-    //     }
-
     public function index(Request $request)
     {
-        $query = Product::with('category'); // eager load category
+        $query = Product::with('category');
 
         if ($request->has('category_id') && $request->category_id !== 'all') {
             $query->where('category_id', $request->category_id);
@@ -165,6 +84,7 @@ class ProductApiController extends Controller
     {
         return [
             'id' => $product->pid,
+            'cid' =>$product->cid,
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
@@ -207,17 +127,5 @@ class ProductApiController extends Controller
         return Storage::url($path);
     }
 
-    // protected function formatProductResponse($product)
-    // {
-    //     return [
-    //         'id' => $product->pid,
-    //         'name' => $product->name,
-    //         'description' => $product->description,
-    //         'price' => $product->price,
-    //         'stock' => $product->stock,
-    //         'image' => $product->image ? url($product->image) : null,
-    //         'created_at' => $product->created_at,
-    //         'updated_at' => $product->updated_at
-    //     ];
-    // }
+
 }

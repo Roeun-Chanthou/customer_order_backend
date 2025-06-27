@@ -15,12 +15,12 @@ class Customer extends Model
         'phone',
         'photo',
         'gender',
-        'otp',
+        // 'otp',
         'otp_verified',
-        'is_active',
+        'is_active'
     ];
 
     protected $hidden = [
-        'password', 'otp'
+        'password',
     ];
 }

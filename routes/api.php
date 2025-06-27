@@ -22,4 +22,8 @@ Route::post('/customer/login', [CustomerApiController::class, 'login']);
 Route::post('/customer/request-reset-password', [CustomerApiController::class, 'requestResetPassword']);
 Route::post('/customer/verify-reset-otp', [CustomerApiController::class, 'verifyResetOtp']);
 Route::post('/customer/reset-password', [CustomerApiController::class, 'resetPassword']);
+Route::post('/test-email', [CustomerApiController::class, 'testEmail']);
+
+Route::post('/wishlist/add', [WishlistController::class, 'addToWishlist']);
+Route::post('/orders/place', [OrderController::class, 'placeOrder']);
 

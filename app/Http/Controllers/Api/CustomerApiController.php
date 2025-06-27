@@ -8,45 +8,91 @@ use App\Models\Customer;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Mail\SendCustomerOtp;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 
 class CustomerApiController extends Controller
 {
+
     public function auth(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string|min:6',
         ]);
+
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $customer = Customer::where('email', $request->email)->first();
+
         if (!$customer) {
             // Check again for duplicate email before creating
             if (Customer::where('email', $request->email)->exists()) {
                 return response()->json(['message' => 'Email already exists'], 409);
             }
+
+            // Create new customer
             $customer = Customer::create([
                 'email' => $request->email,
                 'password' => bcrypt($request->password),
             ]);
         } else {
+            // Verify existing customer's password
             if (!Hash::check($request->password, $customer->password)) {
                 return response()->json(['message' => 'Invalid credentials'], 401);
             }
         }
+
+        // Generate OTP and store in cache with expiration
         $otp = rand(100000, 999999);
-        $customer->otp = $otp;
+        $cacheKey = 'customer_otp_' . $customer->email;
+
+        // Store OTP in cache for 10 minutes
+        Cache::put($cacheKey, [
+            'otp' => $otp,
+            'customer_id' => $customer->cid,
+            'created_at' => now()
+        ], 600); // 10 minutes
+
+        // Reset OTP verification status
         $customer->otp_verified = false;
         $customer->save();
 
-        // Send OTP via email
-        Mail::to($customer->email)->send(new SendCustomerOtp($otp));
+        // Send OTP via email with error handling
+        try {
+            // Send email with inline content
+            Mail::raw("Your OTP code is: {$otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.", function ($message) use ($customer) {
+                $message->to($customer->email)
+                        ->subject('Your OTP Code');
+            });
 
-        return response()->json(['message' => 'OTP sent to email'], 200);
+            // Log successful email attempt
+            Log::info('OTP email sent successfully', [
+                'email' => $customer->email,
+                'otp' => $otp // Remove this in productionar
+            ]);
+
+            return response()->json([
+                'message' => 'OTP sent to email',
+                'debug' => config('app.debug') ? ['otp' => $otp] : [] // Only show in debug mode
+            ], 200);
+
+        } catch (\Exception $e) {
+            // Log email sending error
+            Log::error('Failed to send OTP email', [
+                'email' => $customer->email,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to send OTP email',
+                'error' => config('app.debug') ? $e->getMessage() : 'Email service unavailable'
+            ], 500);
+        }
     }
 
     // 2. Verify OTP
@@ -56,19 +102,65 @@ class CustomerApiController extends Controller
             'email' => 'required|email',
             'otp' => 'required|digits:6',
         ]);
+
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $customer = Customer::where('email', $request->email)->first();
-        if (!$customer || $customer->otp != $request->otp) {
-            return response()->json(['message' => 'Invalid OTP'], 400);
+        if (!$customer) {
+            return response()->json(['message' => 'Customer not found'], 404);
         }
 
+        $cacheKey = 'customer_otp_' . $request->email;
+        $cachedData = Cache::get($cacheKey);
+
+        // Check if OTP exists and is valid
+        if (!$cachedData || $cachedData['otp'] != $request->otp || $cachedData['customer_id'] != $customer->cid) {
+            return response()->json(['message' => 'Invalid or expired OTP'], 400);
+        }
+
+        // Check if OTP is expired (additional safety check)
+        if (now()->diffInMinutes($cachedData['created_at']) > 10) {
+            Cache::forget($cacheKey);
+            return response()->json(['message' => 'OTP has expired'], 400);
+        }
+
+        // Mark as verified and remove OTP from cache
         $customer->otp_verified = true;
         $customer->save();
 
-        return response()->json(['message' => 'OTP verified'], 200);
+        Cache::forget($cacheKey);
+
+        return response()->json(['message' => 'OTP verified successfully'], 200);
+    }
+
+    // Test email configuration
+    public function testEmail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $testOtp = 123456;
+            Mail::to($request->email)->send(new SendCustomerOtp($testOtp));
+
+            return response()->json([
+                'message' => 'Test email sent successfully',
+                'email' => $request->email
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send test email',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // 3. Setup/fill customer info (after OTP verified)
@@ -91,6 +183,11 @@ class CustomerApiController extends Controller
             return response()->json(['message' => 'Customer not found'], 404);
         }
 
+        // Check if OTP is verified
+        if (!$customer->otp_verified) {
+            return response()->json(['message' => 'Please verify OTP first'], 403);
+        }
+
         $customer->full_name = $request->full_name;
         $customer->gender = $request->gender;
         $customer->phone = $request->phone;
@@ -100,6 +197,7 @@ class CustomerApiController extends Controller
                 $oldPath = str_replace('/storage/', '', $customer->photo);
                 Storage::disk('public')->delete($oldPath);
             }
+
             $photo = $request->file('photo');
             $photoName = time() . '.' . $photo->getClientOriginalExtension();
             $path = $photo->storeAs('customers', $photoName, 'public');
@@ -117,10 +215,19 @@ class CustomerApiController extends Controller
     // Show customer profile by email
     public function show(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
         $customer = Customer::where('email', $request->email)->first();
         if (!$customer) {
             return response()->json(['message' => 'Customer not found'], 404);
         }
+
         return response()->json([
             'data' => $this->formatCustomer($customer)
         ], 200);
@@ -155,6 +262,7 @@ class CustomerApiController extends Controller
             'data' => $this->formatCustomer($customer)
         ], 200);
     }
+
     protected function formatCustomer($customer)
     {
         return [
