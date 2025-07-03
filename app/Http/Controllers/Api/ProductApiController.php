@@ -84,7 +84,6 @@ class ProductApiController extends Controller
     {
         return [
             'id' => $product->pid,
-            'cid' =>$product->cid,
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,

@@ -23,4 +23,9 @@ class Customer extends Model
     protected $hidden = [
         'password',
     ];
+
+    public function orders()
+    {
+        return $this->hasMany(\App\Models\Order::class, 'customer_id');
+    }
 }
