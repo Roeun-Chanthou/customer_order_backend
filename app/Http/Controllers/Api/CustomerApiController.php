@@ -282,6 +282,50 @@ class CustomerApiController extends Controller
         return response()->json(['message' => 'OTP sent to email'], 200);
     }
 
+    public function resendOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:customers,email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $customer = Customer::where('email', $request->email)->first();
+
+        // Only resend if not verified
+        if ($customer->otp_verified) {
+            return response()->json(['message' => 'Account already verified. Please login.'], 200);
+        }
+
+        $otp = rand(100000, 999999);
+        $cacheKey = 'customer_otp_' . $customer->email;
+
+        Cache::put($cacheKey, [
+            'otp' => $otp,
+            'customer_id' => $customer->cid,
+            'created_at' => now()
+        ], 600); // 10 minutes
+
+        try {
+            Mail::raw("Your OTP code is: {$otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please ignore this email.", function ($message) use ($customer) {
+                $message->to($customer->email)
+                    ->subject('Your OTP Code');
+            });
+
+            return response()->json([
+                'message' => 'OTP resent to email',
+                'debug' => config('app.debug') ? ['otp' => $otp] : []
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to resend OTP email',
+                'error' => config('app.debug') ? $e->getMessage() : 'Email service unavailable'
+            ], 500);
+        }
+    }
+
     public function verifyResetOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [

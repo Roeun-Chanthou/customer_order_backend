@@ -23,6 +23,7 @@ Route::post('/customer/photo', [CustomerApiController::class, 'updatePhoto']);
 Route::post('/customer/login', [CustomerApiController::class, 'login']);
 
 Route::post('/customer/request-reset-password', [CustomerApiController::class, 'requestResetPassword']);
+Route::post('/customer/resend-otp', [CustomerApiController::class, 'resendOtp']);
 Route::post('/customer/verify-reset-otp', [CustomerApiController::class, 'verifyResetOtp']);
 Route::post('/customer/reset-password', [CustomerApiController::class, 'resetPassword']);
 Route::post('/test-email', [CustomerApiController::class, 'testEmail']);
