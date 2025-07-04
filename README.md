@@ -59,3 +59,54 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+🚀 Laravel Project Setup Guide
+
+📦 Requirements
+
+PHP >= 8.1
+Composer
+MySQL / MariaDB / PostgreSQL
+Node.js & NPM/Yarn (optional for frontend assets)
+Laravel (Installed globally recommended, but not required)
+🛠️ Installation Steps
+
+1️⃣ Clone the Repository
+git clone https://github.com/your-username/your-repo-name.git
+cd your-repo-name
+2️⃣ Install Dependencies
+composer install
+3️⃣ Environment Configuration
+cp .env.example .env
+Edit .env file with your database and app credentials:
+
+APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=  # Will generate below
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_database_name
+DB_USERNAME=your_db_user
+DB_PASSWORD=your_db_password
+4️⃣ Generate Application Key
+php artisan key:generate
+5️⃣ Run Database Migrations
+php artisan migrate
+(Optional) If you have seeders:
+
+php artisan db:seed
+6️⃣ (Optional) Install Frontend Dependencies
+If your project uses Laravel Mix or Vite:
+
+npm install
+npm run dev
+▶️ Running the Application
+
+php artisan serve
+The app will be available at: http://127.0.0.1:8000
+
