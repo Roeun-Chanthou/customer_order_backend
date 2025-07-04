@@ -28,12 +28,10 @@ class OrderItemApiController extends Controller
         return response()->json(['message' => 'Product not found'], 404);
     }
 
-    // Check stock before adding
     if ($product->stock < $request->quantity) {
         return response()->json(['message' => 'Not enough stock for product: ' . $product->name], 400);
     }
 
-    // Decrease stock
     $product->stock -= $request->quantity;
     $product->save();
 

@@ -126,5 +126,4 @@ class ProductApiController extends Controller
         return Storage::url($path);
     }
 
-
 }
